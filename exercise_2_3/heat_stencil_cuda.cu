@@ -20,14 +20,15 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 
 #define gpuErrorCheck(ans, abort) { gpuAssert((ans), __FILE__, __LINE__, abort); }
 
-#define BLOCK_SIZE 9
-#define THREADS_PER_BLOCK 5
 
 __global__ void spreadHeat(float* current_state, float* next_state, int N, int source_x, int source_y)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
-    
+    if (i > N || j > N)
+    {
+        return;
+    }
 
     if (i == source_x && j == source_y)
     {
@@ -63,7 +64,8 @@ int main(int argc, char** argv)
     // create a buffer for storing temperature fields
     float* starting_field =  (float*) malloc(field_size);
     
-     size_t num_blocks = long(ceil(double(field_size)/ double(BLOCK_SIZE)));
+     dim3 threads_per_block(16,16);
+     dim3 num_blocks((N+15)/threads_per_block.x, (N+15) /threads_per_block.y);
     
     // set up initial conditions in A
     for(int i = 0; i<N; i++) {
@@ -94,9 +96,15 @@ int main(int argc, char** argv)
     // execute simulation with kernel
     for (int i = 0; i<T; i++)
     {
-        spreadHeat<<<num_blocks, THREADS_PER_BLOCK>>>(A, B, N, source_x, source_y);
+        spreadHeat<<<num_blocks, threads_per_block>>>(A, B, N, source_x, source_y);
         gpuErrorCheck(cudaDeviceSynchronize(),true);
-        gpuErrorCheck(cudaMemcpy(B,print_buffer,field_size,cudaMemcpyDeviceToHost),false);
+        gpuErrorCheck(cudaMemcpy(print_buffer, B, field_size,cudaMemcpyDeviceToHost),false);
+        if ((!i%1000))
+        {
+            printf("Step t=%d:\n", i);
+            printTemperature(print_buffer, N, N);
+        }
+
         float* temp;
         // swap pointers
         temp = A;
@@ -109,8 +117,8 @@ int main(int argc, char** argv)
     
 
 
-    gpuErrorCheck(cudaFree(&A),true);
-    gpuErrorCheck(cudaFree(&B),true);
+    cudaFree(&A);
+    cudaFree(&B);
     free(print_buffer);
     free(starting_field);
 }
