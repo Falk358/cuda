@@ -99,7 +99,7 @@ int main(int argc, char** argv)
         spreadHeat<<<num_blocks, threads_per_block>>>(A, B, N, source_x, source_y);
         gpuErrorCheck(cudaDeviceSynchronize(),true);
         gpuErrorCheck(cudaMemcpy(print_buffer, B, field_size,cudaMemcpyDeviceToHost),false);
-        if ((!i%1000))
+        if (!(i%1000))
         {
             printf("Step t=%d:\n", i);
             printTemperature(print_buffer, N, N);
@@ -112,18 +112,19 @@ int main(int argc, char** argv)
         B = temp;
     }
 
+
     // copy result back
-    memset(starting_field, 0.0, field_size);
-    gpuErrorCheck(cudaMemcpy(starting_field, A, field_size, cudaMemcpyDeviceToHost), false);
+    float* result_field = (float*) malloc(field_size);
+    gpuErrorCheck(cudaMemcpy(result_field, A, field_size, cudaMemcpyDeviceToHost), false);
 
     //verify results
     printf("Final:\n");
-    printTemperature(starting_field,N,N);
+    printTemperature(result_field,N,N);
     
     int success = 1;
     for(long long i = 0; i<N; i++) {
         for(long long j = 0; j<N; j++) {
-            float temp = starting_field[i*N+j];
+            float temp = result_field[i*N+j];
             if (273 <= temp && temp <= 273+60) continue;
             success = 0;
             break;
@@ -138,6 +139,7 @@ int main(int argc, char** argv)
     cudaFree(B);
     free(print_buffer);
     free(starting_field);
+    free(result_field);
 }
 
 
