@@ -111,14 +111,31 @@ int main(int argc, char** argv)
         A = B;
         B = temp;
     }
-    
 
     // copy result back
+    memset(starting_field, 0.0, field_size);
+    gpuErrorCheck(cudaMemcpy(starting_field, A, field_size, cudaMemcpyDeviceToHost), false);
+
+    //verify results
+    printf("Final:\n");
+    printTemperature(starting_field,N,N);
+    
+    int success = 1;
+    for(long long i = 0; i<N; i++) {
+        for(long long j = 0; j<N; j++) {
+            float temp = starting_field[i*N+j];
+            if (273 <= temp && temp <= 273+60) continue;
+            success = 0;
+            break;
+        }
+    }
+    printf("Verification: %s\n", (success==1)?"OK":"FAILED");
+
     
 
 
-    cudaFree(&A);
-    cudaFree(&B);
+    cudaFree(A);
+    cudaFree(B);
     free(print_buffer);
     free(starting_field);
 }
