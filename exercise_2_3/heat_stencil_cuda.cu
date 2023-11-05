@@ -43,7 +43,7 @@ __global__ void spreadHeat(float* current_state, float* next_state, int N, int s
     float tu = (i != 0) ? current_state[(i - 1) * N + j] : tc;
     float td = (i != N - 1) ? current_state[(i + 1) * N + j] : tc;
 
-    __syncthreads();
+    //__syncthreads();
     // update temperature at current point
     next_state[i * N + j] = tc + 0.2 * (tl + tr + tu + td + (-4 * tc));
     return;
@@ -97,7 +97,7 @@ int main(int argc, char** argv)
     for (int i = 0; i<T; i++)
     {
         spreadHeat<<<num_blocks, threads_per_block>>>(A, B, N, source_x, source_y);
-        gpuErrorCheck(cudaDeviceSynchronize(),true);
+        //gpuErrorCheck(cudaDeviceSynchronize(),true);
         gpuErrorCheck(cudaMemcpy(print_buffer, B, field_size,cudaMemcpyDeviceToHost),false);
         if (!(i%1000))
         {
