@@ -64,7 +64,7 @@ int main(int argc, char** argv)
     // create a buffer for storing temperature fields
     float* starting_field =  (float*) malloc(field_size);
     
-     dim3 threads_per_block(16,16);
+     dim3 threads_per_block(128,128);
      dim3 num_blocks((N+15)/threads_per_block.x, (N+15) /threads_per_block.y);
     
     // set up initial conditions in A
