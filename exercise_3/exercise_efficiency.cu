@@ -9,7 +9,7 @@ void k_matvecmul(long n, double* in, double* out, double* mat) {
     long i = threadIdx.x + blockDim.x*blockIdx.x;
 
     if(i>0 && i < n-1)
-        out[i] = mat[3*i]*in[i] + mat[3*i+1]*in[i+1] + mat[3*i+2]*in[i-1];
+        out[i] = mat[0]*in[i] + mat[1]*in[i+1] + mat[2]*in[i-1];
 }
 
 
@@ -38,13 +38,12 @@ int main() {
 
     // initialize matrix and copy to GPU
     double matrix_row[3] = {1.0 - 0.25*2.0, 0.25, 0.25};
-    cudaMalloc(&d_mat, sizeof(double)*3*n);
-    for(long i=0;i<n;i++)
-        cudaMemcpy(d_mat+3*i, matrix_row, sizeof(double)*3, cudaMemcpyHostToDevice);
+    cudaMalloc(&d_mat, sizeof(double)*3);
+    cudaMemcpy(d_mat, matrix_row, sizeof(double)*3, cudaMemcpyHostToDevice);
 
     // repeated matrix-vector multiplication (i.e. time integration)
     for(long k=0;k<time_steps;k++) {
-        k_matvecmul<<<n/64+1,64>>>(n, d_in, d_out, d_mat);
+        k_matvecmul<<<n/128+1,128>>>(n, d_in, d_out, d_mat);
 
         cudaMemcpy(d_in, d_out, sizeof(double)*n, cudaMemcpyDeviceToDevice);
     }
