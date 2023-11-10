@@ -3,6 +3,10 @@
 profiling results of given file (no optimizations performed):
 
 ```
+==205249== NVPROF is profiling process 205249, command: ../build/exercise_efficiency
+Numerical error: 6.88338e-15
+9.28633 s
+==205249== Profiling application: ../build/exercise_efficiency
 ==205249== Profiling result:
             Type  Time(%)      Time     Calls       Avg       Min       Max  Name
  GPU activities:   99.32%  1.27759s   1000001  1.2770us  1.2150us  648.48us  [CUDA memcpy HtoD]
