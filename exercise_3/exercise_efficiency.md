@@ -116,3 +116,55 @@ Numerical error: 6.88338e-15
 
 
 we can see that our kernel takes up 5% less time compared to the *low hanging fruit* version.
+
+## final Memcpy elimination
+
+Finally, we can also remove the call to memcpy after the kernel:
+```
+    for(long k=0;k<time_steps;k++) {
+        k_matvecmul<<<n/128+1,128>>>(n, d_in, d_out, d_mat);
+
+        cudaMemcpy(d_in, d_out, sizeof(double)*n, cudaMemcpyDeviceToDevice);
+    }
+```
+by swapping the pointers instead:
+```
+    for(long k=0;k<time_steps;k++) {
+        k_matvecmul<<<n/128+1,128>>>(n, d_in, d_out, d_mat);
+        double* temp;
+        temp = d_in;
+        d_in = d_out;
+        d_out = temp;
+    }
+```
+
+This gives us the following measurement: 
+```
+==205812== NVPROF is profiling process 205812, command: ../build/exercise_efficiency
+Numerical error: 6.88338e-15
+0.0236252 s
+==205812== Profiling application: ../build/exercise_efficiency
+==205812== Profiling result:
+            Type  Time(%)      Time     Calls       Avg       Min       Max  Name
+ GPU activities:   65.28%  2.3655ms       100  23.654us  22.848us  28.192us  k_matvecmul(long, double*, double*, double*)
+                   17.95%  650.24us         2  325.12us  1.7600us  648.48us  [CUDA memcpy HtoD]
+                   16.77%  607.74us         1  607.74us  607.74us  607.74us  [CUDA memcpy DtoH]
+      API calls:   93.85%  303.39ms         2  151.69ms  3.5100us  303.38ms  cudaEventCreate
+                    1.88%  6.0653ms         1  6.0653ms  6.0653ms  6.0653ms  cudaHostAlloc
+                    1.83%  5.9247ms         4  1.4812ms  1.0484ms  1.6410ms  cuDeviceTotalMem
+                    1.04%  3.3648ms         3  1.1216ms  11.622us  2.6595ms  cudaMemcpy
+                    0.92%  2.9739ms       404  7.3610us     194ns  361.75us  cuDeviceGetAttribute
+                    0.19%  599.30us         3  199.77us  171.22us  215.78us  cudaMalloc
+                    0.13%  422.02us       100  4.2200us  3.5080us  40.522us  cudaLaunchKernel
+                    0.10%  315.64us         4  78.910us  71.902us  95.180us  cuDeviceGetName
+                    0.04%  141.28us         1  141.28us  141.28us  141.28us  cudaEventSynchronize
+                    0.01%  18.322us         4  4.5800us  1.9360us  10.164us  cuDeviceGetPCIBusId
+                    0.00%  15.401us         2  7.7000us  3.5710us  11.830us  cudaEventRecord
+                    0.00%  14.124us         2  7.0620us     903ns  13.221us  cudaEventDestroy
+                    0.00%  12.254us         1  12.254us  12.254us  12.254us  cudaEventElapsedTime
+                    0.00%  3.7150us         8     464ns     311ns  1.2280us  cuDeviceGet
+                    0.00%  2.3750us         3     791ns     332ns  1.2630us  cuDeviceGetCount
+                    0.00%  1.6780us         4     419ns     225ns     609ns  cuDeviceGetUuid
+```
+
+we can see that the **CUDA memcpy DtoD** call dissappeared, which took up 41 % of our compute time.

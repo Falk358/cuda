@@ -44,8 +44,10 @@ int main() {
     // repeated matrix-vector multiplication (i.e. time integration)
     for(long k=0;k<time_steps;k++) {
         k_matvecmul<<<n/128+1,128>>>(n, d_in, d_out, d_mat);
-
-        cudaMemcpy(d_in, d_out, sizeof(double)*n, cudaMemcpyDeviceToDevice);
+        double* temp;
+        temp = d_in;
+        d_in = d_out;
+        d_out = temp;
     }
 
     cudaEventRecord(stop, 0);
