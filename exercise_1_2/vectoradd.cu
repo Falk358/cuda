@@ -30,7 +30,7 @@ int main()
     cudaMalloc(&d_mem_y, bytes);
     cudaMalloc(&d_mem_res, bytes);
     
-    // TODO fill vectors h_mem_x and h_mem_y with data
+    // fill vectors h_mem_x and h_mem_y with data
     for (int i = 0; i < vector_length; i++)
     {
         h_mem_x[i] = 1.0;
@@ -47,7 +47,7 @@ int main()
     // copy result back from device to host
     cudaMemcpy(h_mem_res, d_mem_res, bytes, cudaMemcpyDeviceToHost);
 
-    // TODO verify and print result
+    // verify and print result
     double tolerance = 1.0e-14;
     bool error_compute = false;
     for (int i = 0; i < vector_length; i++)
