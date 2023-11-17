@@ -48,6 +48,23 @@ int main(int argc, char* argv[])
     }
     int problem_size = stoi(argv[1]);
     double* vector = initVector(problem_size, 1.0);
+
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    
+    cudaEventRecord(start,0);
+
+    //TODO computation here
+
+    cudaEventRecord(stop,0);
+    cudaEventSynchronize(stop);
+    float time;
+    cudaEventElapsedTime(&time, start, stop);
+    cout << time*1e-3 << " s" << endl;
+
+    
+
     
 
     free(vector);
