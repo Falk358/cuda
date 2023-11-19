@@ -55,20 +55,35 @@ void calcInComplexSpace(cufftDoubleComplex* f_k, cufftDoubleComplex* u_k, size_t
 int main()
 {
     size_t array_size = sizeof(cufftDoubleReal) * FUNCTION_RESOLUTION;
-    size_t array_size_complex = (array_size / 2) + 1;
-    double* y_points;
-    double* device_y_points;
+    size_t array_size_freq = (array_size / 2) + 1;
+    cufftDoubleReal* y_points;
+    cufftDoubleReal* u_points;
+    cufftDoubleReal* device_y_points;
+    cufftDoubleReal* device_u_points;
+    cufftDoubleComplex* device_y_points_freq;
+    cufftDoubleComplex* device_u_points_freq;
+
     y_points = initSine(array_size);
+    u_points = (cufftDoubleReal*) malloc(array_size);
     cudaMalloc(&device_y_points, array_size);
-    
+    cudaMalloc(&device_u_points, array_size);
+    cudaMalloc(&device_y_points_freq, array_size_freq);
+    cudaMalloc(&device_u_points_freq, array_size_freq);
     cudaMemcpy(device_y_points, y_points, array_size, cudaMemcpyHostToDevice);
     
-    cufftHandle fft_handle;
+    cufftHandle fft_forward_handle;
+    
+    cufftHandle fft_backward_handle;
 
-    cufftResult plan_success = cufftPlan1d(&fft_handle, array_size, CUFFT_D2Z, 1);
-    if (plan_success != CUFFT_SUCCESS)
+    cufftResult plan_forward_success = cufftPlan1d(&fft_forward_handle, array_size, CUFFT_D2Z, 1);
+    if (plan_forward_success  != CUFFT_SUCCESS)
     {
-        std::cerr << "Error creating plan with array_size " << array_size << "with error: " << plan_success << std::endl; 
+        std::cerr << "Error creating plan with array_size " << array_size << " with error: " << plan_forward_success << std::endl; 
+    }
+    cufftResult plan_backward_success = cufftPlan1d(&fft_backward_handle, array_size, CUFFT_Z2D, 1);
+    if (plan_backward_success != CUFFT_SUCCESS)
+    {
+        std::cerr << "Error creating plan with array_size " << array_size << " with error: " << plan_backward_success << std::endl; 
     }
 
     cudaEvent_t start, stop;
@@ -76,21 +91,38 @@ int main()
     cudaEventCreate(&stop);
     cudaEventRecord(start,0);
     // TODO FFT here
+    cufftResult res_forward = cufftExecD2Z(fft_forward_handle, device_y_points, device_y_points_freq);
+    if (res_forward != CUFFT_SUCCESS)
+    {
+        std::cerr << "Error computing frequency domain of y points. Message: " << res_forward << std::endl;
+    }
+    calcInComplexSpace<<<BLOCK_SIZE, THREAD_COUNT>>>(device_y_points_freq, device_u_points_freq, array_size_freq);
+    // TODO convert u back to space domain (backward)
+    cufftResult res_backward = cufftExecZ2D(fft_backward_handle, device_u_points_freq, device_u_points);
+    if (res_backward != CUFFT_SUCCESS)
+    {
+        std::cerr << "Error computing space domain from frequency domain of u points. Message: " << res_backward << std::endl;
+    }
     cudaEventRecord(stop,0);
     cudaEventSynchronize(stop);
     float time;
     cudaEventElapsedTime(&time, start, stop);
     std::cout << time*1e-3 << " s" << std::endl;
-    
+    cudaMemcpy(u_points, device_u_points, array_size, cudaMemcpyDeviceToHost);
 
 
 
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
     
-    cufftDestroy(plan_success);
+    cufftDestroy(plan_forward_success);
+    cufftDestroy(plan_backward_success);
     
 
     free(y_points);
+    free(u_points);
+    cudaFree(device_u_points);
     cudaFree(device_y_points);
+    cudaFree(device_y_points_freq);
+    cudaFree(device_u_points_freq);
 }
