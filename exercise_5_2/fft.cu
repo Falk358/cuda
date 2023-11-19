@@ -11,9 +11,8 @@
 
 
 // implements f(x) = sin(2 * pi * x) for values 0.1 .. 1.0
-double* initSine(size_t array_size) 
+double* initSine(size_t array_size, double* x_points) 
 {
-    double x_points[FUNCTION_RESOLUTION] = {0.1, 0.2, 0.3, 0.4 , 0.5 ,0.6, 0.7, 0.8, 0.9, 1.0};
     cufftDoubleReal* y_points = (cufftDoubleReal*) malloc(array_size);
     size_t x_length = sizeof(x_points) / sizeof(x_points[0]);
     for (int i = 0; i < x_length; i++)
@@ -22,6 +21,25 @@ double* initSine(size_t array_size)
     }
     return y_points;
 
+}
+
+// verfiy with analytical solution f''(x) = 1/(2*pi)² sin(2*pi*x)
+bool verifyResult(cufftDoubleReal* result, double tolerance, double* x_points)
+{
+    bool verified = true;
+    size_t x_length = sizeof(x_points) / sizeof(x_points[0]);
+    for (int i = 0; i< x_length; i++)
+    {
+        double analytical_solution = (1/pow(2.0 * M_PI,2.0)) * sin(2.0*M_PI*x_points[i]);
+        double error = fabs(analytical_solution - result[i]);
+        if (error > tolerance)
+        {
+            verified = false;
+            std::cerr << "Error verifying at index " << i << "\n error: " << error << "\n analytical solution: " << analytical_solution << "\n calculated solution: " << result[i] << std::endl;
+        }
+    }
+    return verified;
+    
 }
 
 // implents u_k = f_k / (2*pi*k)²
@@ -63,7 +81,8 @@ int main()
     cufftDoubleComplex* device_y_points_freq;
     cufftDoubleComplex* device_u_points_freq;
 
-    y_points = initSine(array_size);
+    double x_points[FUNCTION_RESOLUTION] = {0.1, 0.2, 0.3, 0.4 , 0.5 ,0.6, 0.7, 0.8, 0.9, 1.0};
+    y_points = initSine(array_size, x_points);
     u_points = (cufftDoubleReal*) malloc(array_size);
     cudaMalloc(&device_y_points, array_size);
     cudaMalloc(&device_u_points, array_size);
@@ -110,8 +129,11 @@ int main()
     std::cout << time*1e-3 << " s" << std::endl;
     cudaMemcpy(u_points, device_u_points, array_size, cudaMemcpyDeviceToHost);
 
-
-
+    bool verified = verifyResult(u_points, 0.1, x_points);
+    if (verified)
+    {
+        std::cout << "SUCCESS!!! result was verified with analytical solution!!!" << std::endl;
+    }
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
     
