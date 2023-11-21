@@ -73,7 +73,7 @@ void calcInComplexSpace(cufftDoubleComplex* f_k, cufftDoubleComplex* u_k, size_t
 int main()
 {
     size_t array_size = sizeof(cufftDoubleReal) * FUNCTION_RESOLUTION;
-    size_t array_size_freq = (array_size / 2) + 1;
+    size_t array_size_freq = ((FUNCTION_RESOLUTION/ 2) + 1) * sizeof(cufftDoubleComplex);
     cufftDoubleReal* y_points;
     cufftDoubleReal* u_points;
     cufftDoubleReal* device_y_points;
