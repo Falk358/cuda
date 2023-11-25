@@ -3,34 +3,6 @@
 ========= No CUDA-MEMCHECK results found
 [training2@mp-gpu3-login exercise_4_1]$ ~/
 .cache/          cuda/            .nv/             slurm_bash.sh    storage/         vscode-cpptools/ 
-.config/         .local/          .pki/            .ssh/            .vim/            .vscode-server/  
-[training2@mp-gpu3-login exercise_4_1]$ ~/slurm_bash.sh 
-[training2@mp-gpu3-a100 exercise_4_1]$ cuda-gdb ../build/vector
-NVIDIA (R) CUDA Debugger
-11.2 release
-Portions Copyright (C) 2007-2020 NVIDIA Corporation
-GNU gdb (GDB) 8.3.1
-Copyright (C) 2019 Free Software Foundation, Inc.
-License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-Type "show copying" and "show warranty" for details.
-This GDB was configured as "x86_64-pc-linux-gnu".
-Type "show configuration" for configuration details.
-For bug reporting instructions, please see:
-<http://www.gnu.org/software/gdb/bugs/>.
-Find the GDB manual and other documentation resources online at:
-    <http://www.gnu.org/software/gdb/documentation/>.
-
-For help, type "help".
-Type "apropos word" to search for commands related to "word"...
-Reading symbols from ../build/vector...
-(cuda-gdb) cuda-memcheck
-Undefined command: "cuda-memcheck".  Try "help".
-(cuda-gdb) exit
-Undefined command: "exit".  Try "help".
-(cuda-gdb) quit
-[training2@mp-gpu3-a100 exercise_4_1]$ cuda-memcheck ../build/vector
 ========= CUDA-MEMCHECK
 ========= Invalid __global__ write of size 4
 =========     at 0x00000250 in /home/training2/cuda/exercise_4_1/vector.cu:9:KrnlDmmy(int*)
@@ -194,3 +166,33 @@ Undefined command: "exit".  Try "help".
 =========     Host Frame:../build/vector [0x392e]
 =========
 ========= ERROR SUMMARY: 11 errors
+
+
+
+the code in question:
+```
+__global__ void KrnlDmmy(int *x) {
+    int i;
+    i = (blockIdx.x * blockDim.x) + threadIdx.x;
+
+    x[i] = i;
+    return;
+}
+```
+
+The issue is that our array is of size 256, while we start 264 threads. This causes each thread with index > 256 to attempt to access out of bounds memory.
+The fix is quite simple:
+```
+__global__ void KrnlDmmy(int *x, size_t max_size) {
+    int i;
+    i = (blockIdx.x * blockDim.x) + threadIdx.x;
+    if (i >= max_size)
+    {
+        return;
+    }
+    x[i] = i;
+    return;
+}
+```
+
+We need to pass our `array_size` to the kernel, this fixes the problem
