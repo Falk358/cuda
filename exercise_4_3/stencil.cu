@@ -40,8 +40,8 @@ int main() {
     initializeArray(in, N);
 
     float *d_weights; cudaMalloc(&d_weights, wsize);
-    float *d_in; cudaMalloc(&d_in, wsize);
-    float *d_out; cudaMalloc(&d_out, wsize);
+    float *d_in; cudaMalloc(&d_in, size);
+    float *d_out; cudaMalloc(&d_out, size);
 
     cudaMemcpy(d_weights, weights, wsize, cudaMemcpyHostToDevice);
     cudaMemcpy(d_in, in, wsize, cudaMemcpyHostToDevice);
