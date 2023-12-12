@@ -248,13 +248,19 @@ __global__ void mandelbrot_block_k
 	if(threadIdx.x == 0 && threadIdx.y == 0) {
 		if(comm_dwell != DIFF_DWELL) {
 			// uniform dwell, just fill
-			// ASSIGNMENT
+			dim3 block_size(BSX, BSY);
+			dim3 grid(divup(d,BSX), divup(d,BSY)); 
+			dwell_fill_k<<<grid, block_size>>>(dwells, w, x0, y0, d, comm_dwell);
 		} else if(depth + 1 < MAX_DEPTH && d / SUBDIV > MIN_SIZE) {
 			// subdivide recursively
-			// ASSIGNMENT
+			dim3 block_size(blockDim.x, blockDim.y);
+			dim3 grid(SUBDIV, SUBDIV);
+			mandelbrot_block_k<<<grid, block_size>>>(dwells, w, h, cmin, cmax, x0, y0, d/SUBDIV, depth+1);
 		} else {
-			// leaf, per-pixel kernel
-			// ASSIGNMENT
+			// leaf, per-pixel kernel ASSIGNMENT mandelbrot_pixel_k(dwells, w, h, cmin, cmax, x0, y0, d);
+			dim3 block_size(BSX, BSY);
+			dim3 grid(divup(d,BSX), divup(d,BSY)); 
+			mandelbrot_pixel_k<<<grid, block_size>>>(dwells, w, h, cmin, cmax, x0, y0, d);
 		}
 		cucheck_dev(cudaGetLastError());
 		//check_error(x0, y0, d);
