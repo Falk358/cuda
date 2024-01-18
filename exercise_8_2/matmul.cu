@@ -19,6 +19,29 @@ const long BS = 32;
 __global__
 void matmul_fast(long n, float* A, float* B, float* C) {
     // TODO
+    long i = threadIdx.x; long bi = blockIdx.x;
+    long j = threadIdx.y; long bj = blockIdx.y;
+    // loop over all sub-matrices
+    double val = 0.0;
+    for(long m=0;m<n/BS;m++)
+     {
+        __shared__ double block_A[BS*BS];
+        __shared__ double block_B[BS*BS];
+        // load block into shared memory
+        block_A[i+BS*j] = A[bi*BS+i + n*(m*BS+j)];
+        block_B[i+BS*j] = B[m*BS+i + n*(bj*BS+j)];
+        // wait until all threads have caught up
+        __syncthreads();
+        // compute the (sub-)matrix-matrix product
+        for(long k=0;k<BS;k++)
+            val += block_A[i+BS*k]*block_B[k+BS*j];
+        // make sure that all threads are finished before
+        // next loop iteration starts.
+        __syncthreads();
+    }
+    // update result in global memory
+    C[bi*BS+i + n*(bj*BS+j)] = val;
+
 }
 
 int main() {
