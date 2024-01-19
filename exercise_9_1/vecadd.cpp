@@ -4,7 +4,7 @@
 
 int main(int argc, char* argv[]){
     Kokkos::initialize(argc, argv);
-    int n = 1024;
+    int n = 256;
 
     {
         Kokkos::View<double***, Kokkos::LayoutLeft> d_left_x("x", n, n, n), d_left_y("y", n, n, n), d_left_res("res", n, n, n);
@@ -53,11 +53,11 @@ int main(int argc, char* argv[]){
         Kokkos::deep_copy(d_right_y, h_right_y);
         Kokkos::deep_copy(d_right_res, h_right_res);
 
-        Kokkos::parallel_for("vecadd", Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0,0,0},{n,n,n}), KOKKOS_LAMBDA(int i,int j,int k){
+        Kokkos::parallel_for("vecadd_left", Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0,0,0},{n,n,n}), KOKKOS_LAMBDA(int i,int j,int k){
             d_left_res(i,j,k) = d_left_x(i,j,k) + d_left_y(i,j,k);
         });
         
-        Kokkos::parallel_for("vecadd", Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0,0,0}, {n,n,n}), KOKKOS_LAMBDA(int i,int j,int k){
+        Kokkos::parallel_for("vecadd_right", Kokkos::MDRangePolicy<Kokkos::Rank<3>>({0,0,0}, {n,n,n}), KOKKOS_LAMBDA(int i,int j,int k){
             d_right_res(i,j,k) = d_right_x(i,j,k) + d_right_y(i,j,k);
         });
         
@@ -71,7 +71,10 @@ int main(int argc, char* argv[]){
                 for (int k = 0; k < n; k++)
                 {
                     if (h_left_res(i,j,k) != 3.0)
+                    {
                         std::cout << "verification failed at index " << i << ", " << j << ", " << k << std::endl;
+                        return -1;
+                    }
                 }
             }
         }
@@ -83,7 +86,10 @@ int main(int argc, char* argv[]){
                 for (int k = 0; k < n; k++)
                 {
                     if (h_right_res(i,j,k) != 3.0)
+                    {
                         std::cout << "verification failed at index " << i << ", " << j << ", " << k << std::endl;
+                        return -1;
+                    }
                 }
             }
         }
